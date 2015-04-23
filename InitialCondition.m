@@ -82,7 +82,7 @@ Nbramp= 0;  %20 (Hubert value);	 % for a delayed start
     nf = 40000*prec; 
 
     rangeT = Nstart*T0+Nend*T0;
-    rangeT= prec*rangeT;
+    rangeT = prec*rangeT;
     t = s_space(-Nstart*T0*prec,Nend*T0*prec,nf);  %evenly spaced sampled values from xstart to (xend-dx)
 
     dt = t(2)-t(1); % timestep
@@ -144,8 +144,8 @@ Nbramp= 0;  %20 (Hubert value);	 % for a delayed start
     a0 = ak/k0; % starting amplitude
 
 % go to dimensionless NLSE (3)
-    X=sqrt(beta/(2*alpha))*a0*(t-(1/c_g)*x_f);  
-    T=sqrt(beta/(2*alpha))^2*a0^2*alpha*x_f;   
+    T=sqrt(beta/(2*alpha))*a0*(t-(1/c_g)*x_f);  
+    X=sqrt(beta/(2*alpha))^2*a0^2*alpha*x_f;   
 
 %% Calculate Initial Condition
 
@@ -158,9 +158,9 @@ if A<0.5
     B=sqrt(8*A*(1-2*A)); % B in NLSE (3)
     w_mod=2*sqrt(1-2*A); % omega_mod in NLSE (3)
         
-    a=-a0*(1+(2*(1-2*A)*cosh(2*B*T)+1i*B*sinh(2*B*T))./(sqrt(2*A)*cos(w_mod*X)-cosh(2*B*T))).*exp(2*1i*T);
+    a=-a0*(1+(2*(1-2*A)*cosh(2*B*X)+1i*B*sinh(2*B*X))./(sqrt(2*A)*cos(w_mod*T)-cosh(2*B*X))).*exp(2*1i*X);
 else
-    a= a0*(-1+(4*(1+4*1i*T))./(1+4*X.^2+16*T.^2)).*exp(2*1i*T); 
+    a= a0*(-1+(4*(1+4*1i*X))./(1+4*T.^2+16*X.^2)).*exp(2*1i*X); 
 end;
 
 % surface elevation initial condition, eqn (1): 
@@ -185,15 +185,15 @@ if (CalculateSpace ==1)
 
         % go to dimensionless NLSE (3)
         t_coarse = t_coarse_init+(x_i./c_g);
-        X_coarse = sqrt(beta/(2*alpha))*a0*(t_coarse-(1/c_g)*x_i);  
-        T_coarse = sqrt(beta/(2*alpha))^2*a0^2*alpha*x_i;  
+        T_coarse = sqrt(beta/(2*alpha))*a0*(t_coarse-(1/c_g)*x_i);  
+        X_coarse = sqrt(beta/(2*alpha))^2*a0^2*alpha*x_i;  
             
             
-        a_coarse=-a0*(1+(2*(1-2*A)*cosh(2*B*T_coarse)+1i*B*sinh(2*B*T_coarse))./(sqrt(2*A)*cos(w_mod*X_coarse)-cosh(2*B*T_coarse))).*exp(2*1i*T_coarse);
+        a_coarse=-a0*(1+(2*(1-2*A)*cosh(2*B*X_coarse)+1i*B*sinh(2*B*X_coarse))./(sqrt(2*A)*cos(w_mod*T_coarse)-cosh(2*B*X_coarse))).*exp(2*1i*X_coarse);
         a2d (j,:) = a_coarse;
         j = j+1;
         if (ismember(j,[2;20;40;60;80;100;120;140;160;180;200]))         
-            record(:,jj) = [x_i T min(X) max(X)];
+            record(:,jj) = [x_i T min(T) max(T)];
             jj=jj+1;
     
         end
@@ -201,9 +201,9 @@ if (CalculateSpace ==1)
     else
         for (x_i = x)
         t_coarse = t-(x_i./c_g);       
-        X_coarse = sqrt(beta/(2*alpha))*a0*(t_coarse-(1/c_g)*x_i);  
-        T_coarse = sqrt(beta/(2*alpha))^2*a0^2*alpha*x_i;  
-        a_coarse= a0*(-1+(4*(1+4*1i*T_coarse))./(1+4*X_coarse.^2+16*T_coarse.^2)).*exp(2*1i*T_coarse);
+        T_coarse = sqrt(beta/(2*alpha))*a0*(t_coarse-(1/c_g)*x_i);  
+        X_coarse = sqrt(beta/(2*alpha))^2*a0^2*alpha*x_i;  
+        a_coarse= a0*(-1+(4*(1+4*1i*X_coarse))./(1+4*T_coarse.^2+16*X_coarse.^2)).*exp(2*1i*X_coarse);
         a2d (j,:) = a_coarse;
         j = j+1;
         end
@@ -259,7 +259,7 @@ end
      % clip a, eta and X
      eta = eta(a_llim:a_rlim);
      t = t(a_llim:a_rlim);
-     X = X(a_llim:a_rlim);
+     T = T(a_llim:a_rlim);
      
 % If this results in an odd vector, make it even by taking of 1 entry
 
@@ -267,7 +267,7 @@ end
         a = a(1:end-1);
         eta = eta(1:end-1);
         t = t(1:end-1);
-        X = X(1:end-1);
+        T = T(1:end-1);
       end
       
       
