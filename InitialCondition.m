@@ -139,9 +139,12 @@ Nbramp= 0;  %20 (Hubert value);	 % for a delayed start
 % additional normalization
     alpha = alpha/c_g^3; 
     beta = beta/c_g;
-% go to the frame of ?
+    
+% shift timescale so maximum occurs after x_f meters
     t = t+x_f/c_g; % focus point/phase velocity
-    a0 = ak/k0; % starting amplitude
+    
+% starting amplitude to scale
+    a0 = ak/k0; 
 
 % go to dimensionless NLSE (3)
     T=sqrt(beta/(2*alpha))*a0*(t-(1/c_g)*x_f);  
@@ -168,7 +171,7 @@ end;
     % Hubert doest kx-wt, maura only wt, because FT is only on the time 
     % domain, so it should not matter.
 
-% calculate anaylical solution for 2d domain:
+%% Optional: calculate anaylical solution for 2d domain:
 if (CalculateSpace ==1)
     
    % use a coarser time vector for 2d picture
@@ -215,7 +218,7 @@ end
     imagesc(t,x,abs(a2d))
     xlabel('t')
     ylabel('x')
-    title('envelope absolute');
+    title('2d: envelope a(x,t)');
     colorbar;
     
     figure
@@ -225,26 +228,21 @@ end
     light
     shading interp
     lighting phong
+    title('2d: envelope a(x,t)');
     
-          figure
+    figure
     surf(t_coarse_init,x,abs(a2d)/a0)
     xlabel('t-x/c_g (s)')
     ylabel('x (s)')
     light
     shading interp
     lighting phong
-    
-    
+    title('2d: envelope q(x,t)');
     
 % change orientation of vector and change imaginary part to negative?
     a = a'; 
 %% make solution periodic on the time domain: trim edges
-        a(1)
-        a(end) 
-
-        figure
-        plot((repmat(real(a),[1 2])));
-        
+     
 % trim to have minama on both sides
      min_a = min(real(a));
      tolerance = abs(max(real(a))-min_a)*1e-5; %depends on 'height' of a 
@@ -269,11 +267,10 @@ end
         t = t(1:end-1);
         T = T(1:end-1);
       end
-      
-      
-      figure
+        
+     figure
      plot((repmat(real(a),[2 1])));
-     title('repeated matrix A');
+     title('repeated matrix A to check if boundaries are periodic');
 %% Optional: boundary nonzero and/or Nramp nonzero
 
 % if there is a nonzero boundary, shift things so the boundary matches.

@@ -81,6 +81,7 @@ a_crit = 0.000035/ak; %k0 or k?
 
 % Define f*: without f0 the pulse moves ? whats happening here?
     nFreq = length(f);
+    f_mid = round(nFreq/2);
     fstar = f; 
     jj = 0;
     for ii=nFreq:-1:nFreq/2+1
@@ -140,7 +141,7 @@ a_crit = 0.000035/ak; %k0 or k?
     end    
     nt = length(t); % number of time steps
 
-% Result vector Env2D is the envelope in t and z
+% Pre-allocate: vector Env2D is the envelope in t and z
     Env2D_ana=zeros(nZ,nt);         % no wind, test compare analytical
     Env2D=zeros(nZ,nt);         % no wind
     Env2D_WO=zeros(nZ,nt);      % weak wind (Wind Onorato)
@@ -149,11 +150,15 @@ a_crit = 0.000035/ak; %k0 or k?
     if (MoveWithGroup==1)
         Env2D_cg=zeros(nZ,nt); 
     end
-
-% Result vector Eta is the surface elevation 
+  
+% Pre-allocate: Norm and Momentum Vector
+    Momentum=zeros(nZ,1);        
+    Norm=zeros(nZ,1);         
+    
+% Pre-allocate: vector Eta is the surface elevation 
     Eta=zeros(1,nZ);
 
-% Result vectors for the the characteristic wave height Hs
+% Pre-allocate: vectors for the the characteristic wave height Hs
     Hs_sd = zeros(1,nZ);
     Hs_sdWO = zeros(1,nZ);
     Hs_sdWM = zeros(1,nZ);
@@ -193,25 +198,15 @@ for Z = Zi
  
      if (nonlinear == 1)
       % if (STFT ==1 ) % calculate nonlinear part analytically
-           % nonlinear part
-           
+          
            %tic
            % linear part, encapuslation of NL
             a_new2=abs(a_new).^2;
-            
-%             Coeff_NL_WB = (-1/tau)*((;  % wavebreaking term
-%             Coeff_NL = Coeff_NL_1 +  Coeff_NL_WB;
-            %Env_NL = exp(-2i*Coeff_NL*dz.*a_new2).*a_new;
-            Env_NL = exp(-1i*Coeff_NL*dz.*a_new2).*a_new;
-     
-            Env_NL_FT = FourierT(Env_NL,dt);
-            
-            EnvTest = IFourierT(exp(CL*dz).*Env_NL_FT,dt);
-          
+            Env_NL = exp(-1i*Coeff_NL*dz.*a_new2).*a_new;     
+            Env_NL_FT = FourierT(Env_NL,dt);            
+            EnvTest = IFourierT(exp(CL*dz).*Env_NL_FT,dt);         
           % toc
-                    
-              % tic
-           
+        
       % else    %use Ranga Kutta       
            % Timestep linear part
              Envw = a_FT.*exp(CL*dz);
@@ -339,7 +334,7 @@ for Z = Zi
      if (abs(Z - Z0(iz)) < tolerance)
          
      % Calculate Envelope in z direction for every t 
-        Env2D_Test(iz,:) = EnvTest(:); %analytical SSFT
+       Env2D_Test(iz,:) = EnvTest(:); %analytical SSFT
        Env2D(iz,:) = Env(:);
        Env2D_WO(iz,:) = Env_WO(:);
        Env2D_WM(iz,:) = Env_WM(:);
@@ -365,7 +360,13 @@ for Z = Zi
        Hs_sdWO(iz) = 4*sqrt(mean(mean((real(crossProdWO)-MeanH0_WO).^2)));
        Hs_sdWM(iz) = 4*sqrt(mean(mean((real(crossProdWM)-MeanH0_WM).^2)));
        
-     % Account for wavebreaking
+     % Calculate Momentum and Norm, NOT YET FUNCTIONAL 
+       a_FTshift = circshift(a_FT,[1 f_mid]);
+       f_shift = f-f_mid; 
+       Momentum(iz) = sum((f_shift.*abs(a_FTshift)),2); % momentum in  m^2 s^-1 
+       Norm(iz) =  sum(abs(a_FT),2); % norm in m^2
+    
+     % Account for wavebreaking, OLD METHOD OF CUTTING AT 90% of max
        % Wave breaks is Amplitude > steepness * A0
 %            if (windWOBlows == 1)
 % 
@@ -393,11 +394,6 @@ for Z = Zi
         iz = iz+1;
 
      end  
-     
-%      if (max(max(real(Eta.*exp(-2*pi*1i*f0*t))))>50.)  %%changed sign ??
-%         break
-%      end   
-
 end
 
 %% Significant wave height if akhm ~= 2 
@@ -470,23 +466,23 @@ end
 
 if (mkFigs == 1)
     
-% Surface elevation last Timeslice
-      figure
-      plot(t,real(Env.*exp(-2*1i*pi*f0*t)),'black');  %%changed sign$
-      hold on
-      plot(t,real(Env_WO.*exp(-2*1i*pi*f0*t)),'b--');  %%changed sign
-       plot(t,real(Env_WM.*exp(-2*1i*pi*f0*t)),'r--');  %%changed sign$
-      legend('no wind','weak wind (WO)', 'strong wind (WM)')
-      title('Surface elevation last timeslice'); 
-      
-% Envelopes
-      figure
-      hold on
-      plot(t,real(a_new),'g');  %%changed sign
-      plot(t,real(Env),'b');  %%changed sign
-      legend('analytical','Runga Kutta')
-      title('? timeslice');
-      print(gcf, '-depsc2', 'Eta.eps')
+% % Surface elevation last Timeslice
+%       figure
+%       plot(t,real(Env.*exp(-2*1i*pi*f0*t)),'black');  %%changed sign$
+%       hold on
+%       plot(t,real(Env_WO.*exp(-2*1i*pi*f0*t)),'b--');  %%changed sign
+%        plot(t,real(Env_WM.*exp(-2*1i*pi*f0*t)),'r--');  %%changed sign$
+%       legend('no wind','weak wind (WO)', 'strong wind (WM)')
+%       title('Surface elevation last timeslice'); 
+%       
+% % Envelopes at last time slice
+%       figure
+%       hold on
+%       plot(t,real(a_new),'g');  %%changed sign
+%       plot(t,real(Env),'b');  %%changed sign
+%       legend('analytical','Runga Kutta')
+%       title('Enelvipes at last time slice');
+%       print(gcf, '-depsc2', 'Eta.eps')
   
 % Characteristic wave height
       figure
@@ -498,7 +494,7 @@ if (mkFigs == 1)
       ylabel('Hs [m] ','fontsize',20)
       legend('no wind','wO', 'wM')
       set(gca,'fontsize',16)
-      print(gcf, '-depsc2', 'Hs.eps')
+%       print(gcf, '-depsc2', 'Hs.eps')
       title('Characteristic wave height different models')
 
 % Envelope Spectrum
@@ -516,9 +512,23 @@ if (mkFigs == 1)
       title('Envelope Spectrum')
       xlabel('Frequency (Hz)')
       ylabel('|Y(f)|')
-      print(gcf, '-depsc2', 'Spectrum.eps')
+%       print(gcf, '-depsc2', 'Spectrum.eps')
 
-% Surface Elevation Spectrum, for different models
+% Momentum and Norm
+
+    figure
+    % momentum
+        subplot(1,2,1)
+        plot(Z0,Momentum*1e4) % go from m^2 to cm^2
+        xlabel('distance z (m)')
+        ylabel('Momentum (cm^2)')
+    % norm
+        subplot(1,2,2)
+        plot(Z0,Norm*1e4) % go from m^2 to cm^2
+        xlabel('distance z (m)')
+        ylabel('Norm (cm^2 s^{-1})')
+
+%% Surface Elevation Spectrum, for different models
       etaTFin = real(Env2D(end,:).*exp(-2*pi*1i*f0*t)); %%changed sign
       etaTFinO = real(Env2D_WO(end,:).*exp(-2*pi*1i*f0*t)); %%changed sign
       etaTFinM = real(Env2D_WM(end,:).*exp(-2*pi*1i*f0*t)); %%changed sign
@@ -528,155 +538,155 @@ if (mkFigs == 1)
       etawFinM = FourierT(etaTFinM,dt);
 
       figure   
-      % no wind
-      subplot(3,1,1)
-      %%nm = 200; %%in old simulations
-      nm = 300;
-%       plot(f(1:nm), abs(eta(1:nm)),'b') 
-      hold on
-      plot(f(1:nm), abs(etawFin(1:nm)),'r--') 
       title('Single-Sided Amplitude Spectrum of a(t)')
-      xlabel('Frequency (Hz)')
-      ylabel('|Y(f)|')
+      hold on
+      
+      % no wind
+          subplot(3,1,1)    
+          nm = 300; %%nm = 200; %%in old simulations
+    %       plot(f(1:nm), abs(eta(1:nm)),'b')     
+          plot(f(1:nm), abs(etawFin(1:nm)),'r--')        
+          xlabel('Frequency (Hz)')
+          ylabel('|Y(f)|')
+          title('No Wind')
       
       % weak wind (Onorato)
-      subplot(3,1,2)
-%       plot(f(1:nm), abs(zetaw(1:nm)),'b') 
-      hold on
-      plot(f(1:nm), abs(etawFinO(1:nm)),'r--') 
-      xlabel('Frequency (Hz)')
-      ylabel('|Y(f)|')
+          subplot(3,1,2)
+    %       plot(f(1:nm), abs(zetaw(1:nm)),'b') 
+          hold on
+          plot(f(1:nm), abs(etawFinO(1:nm)),'r--') 
+          xlabel('Frequency (Hz)')
+          ylabel('|Y(f)|')
+          title('Weak Wind')
       
       % strong wind (Maura)
-      subplot(3,1,3)
-%       plot(f(1:nm), abs(zetaw(1:nm)),'b') 
-      hold on
-      plot(f(1:nm), abs(etawFinM(1:nm)),'r--') 
-      xlabel('Frequency (Hz)')
-      ylabel('|Y(f)|')
-      print(gcf, '-depsc2', 'Spectrum.eps')
+          subplot(3,1,3)
+    %       plot(f(1:nm), abs(zetaw(1:nm)),'b') 
+          hold on
+          plot(f(1:nm), abs(etawFinM(1:nm)),'r--') 
+          xlabel('Frequency (Hz)')
+          ylabel('|Y(f)|')
+          title('Strong Wind')
+%           print(gcf, '-depsc2', 'Spectrum.eps')
 
-% 2D plot envelope
+%% 2D plot envelope and line cuts Real Space
      
-      % make coarser 2d envlope vectors for 3d plotting
-      
-      
+      % make coarser 2d envlope vectors for 3d plotting   
         Env2D_coarse = Env2D(:,1:20:end);
         Env2D_WO_coarse = Env2D_WO(:,1:20:end);
         Env2D_WM_coarse = Env2D_WM(:,1:20:end);
         Env2D_cg_coarse = Env2D_cg(:,1:20:end);
         t_coarse=linspace(min(t),max(t),size(Env2D_coarse,2));
-        
-      % 2d envelope plots NO WIND  
-      figure
-      subplot(1,2,1)
-      imagesc(t,Z0,abs(Env2D_coarse))
-      xlabel('time t (s)')
-      ylabel('distance Z (m)')
-      title('RK envelope [m]')
-      colorbar
-      
-      subplot(1,2,2)
-      surf(t_coarse,Z0,abs(Env2D_coarse))
-      xlabel('time t (s)')
-      ylabel('distance Z (m)')
-      title('RK envelope [m]')
-      light
-      shading interp
-      lighting phong
-      colorbar
-      
-      % 2d evenlope NO WIND in cg frame
-      figure
-      subplot(1,2,1)
-      imagesc(t,Z0,abs(Env2D_cg_coarse))
-      xlabel('time t (s)')
-      ylabel('distance Z (m)')
-      title('RK envelope [m]')
-      colorbar
-    
-       subplot(1,2,2)
-       surf(t_coarse,Z0,abs(Env2D_cg_coarse))
-      xlabel('time t (s)')
-      ylabel('distance Z (m)')
-      title('RK envelope [m]')
-      light
-      shading interp
-      lighting phong
-      colorbar
-      
-      % linecuts
-      % @  t=0 
-      figure
-      t_0 =  find(abs(t-(x_f/c_g))<dt, 1, 'first')
-      subplot(1,2,1)
-      plot(Z0,abs(Env2D(:,t_0)))
-      xlabel('distance Z')
-      ylabel('envelope (m)')
-      title(['envelope surface height [m] @', num2str(t(t_0))])
-      
-      %@ Z=x (focus point)
-      subplot(1,2,2)
-      Z_x=  find(abs(Z0-abs(x_f))<outZ, 1, 'first');
-      plot(t,abs(Env2D(Z_x,:)))
-      xlabel('time t (s)')
-      ylabel('envelope (m)')
-        title('RK envelope height a [m] @ Z=x ')
+      % NO WIND  
+          % 2d envelope plots 
+              figure
+              subplot(1,2,1)
+              imagesc(t,Z0,abs(Env2D_coarse))
+              xlabel('time t (s)')
+              ylabel('distance Z (m)')
+              title('RK envelope [m]')
+              colorbar
 
-      % 2d plots enelopeanalytical FT NO WIND  ^
-      figure
-      imagesc(t,Z0,abs(Env2D_Test))
-      xlabel('time t (s)')
-      ylabel('distance Z (m)')
-      title('Analytical SSFT a  ')
-      colorbar
-      
-      % linecuts
-      % @  t=0 
-      figure
-      t_0 =  find(abs(t-(x_f/c_g))<dt, 1, 'first')
-      subplot(1,2,1)
-      plot(Z0,abs(Env2D_Test(:,t_0)))
-      xlabel('distance Z')
-      ylabel('envelope (m)')
-      title(['envelope surface height [m] @', num2str(t(t_0))])
-      
-      %@ Z=x (focus point)
-      subplot(1,2,2)
-      Z_x=  find(abs(Z0-abs(x_f))<outZ, 1, 'first');
-      plot(t,abs(Env2D_Test(Z_x,:)))
-      xlabel('time t (s)')
-      ylabel('envelope (m)')
-      title('Analytical SSFT a [m] @ Z=x ')
-      
-      % 2d plots Wind Maura 
-      % 2D plot envelope
-      figure
-      imagesc(t,Z0,abs(Env2D_WM))
-      xlabel('time t (s)')
-      ylabel('distance Z (m)')
-      title('RK WM  ')
-      colorbar
-      
-      % linecuts
-      % @  t=0 
-      figure
-      t_0 =  find(abs(t-(x_f/c_g))<dt, 1, 'first')
-      subplot(1,2,1)
-      plot(Z0,abs(Env2D_WM(:,t_0)))
-      xlabel('distance Z')
-      ylabel('envelope (m)')
-      title(['envelope surface height [m] @', num2str(t(t_0))])
-      
-      %@ Z=x (focus point)
-      subplot(1,2,2)
-      Z_x=  find(abs(Z0-abs(x_f))<outZ, 1, 'first');
-      plot(t,abs(Env2D_WM(Z_x,:)))
-      xlabel('time t (s)')
-      ylabel('envelope (m)')
-      title('Analytical SSFT a [m] @ Z=x ')
+              subplot(1,2,2)
+              surf(t_coarse,Z0,abs(Env2D_coarse))
+              xlabel('time t (s)')
+              ylabel('distance Z (m)')
+              title('RK envelope [m]')
+              light
+              shading interp
+              lighting phong
+              colorbar
 
-% Non-Akhmediev Breather plots
+          % 2d evenlope NO WIND in cg frame
+              figure
+              subplot(1,2,1)
+              imagesc(t,Z0,abs(Env2D_cg_coarse))
+              xlabel('time t (s)')
+              ylabel('distance Z (m)')
+              title('RK envelope [m]')
+              colorbar
+
+               subplot(1,2,2)
+               surf(t_coarse,Z0,abs(Env2D_cg_coarse))
+              xlabel('time t (s)')
+              ylabel('distance Z (m)')
+              title('RK envelope [m]')
+              light
+              shading interp
+              lighting phong
+              colorbar
+      
+         % linecuts 
+              % @  t=0 
+              figure
+              t_0 =  find(abs(t-(x_f/c_g))<dt, 1, 'first')
+              subplot(1,2,1)
+              plot(Z0,abs(Env2D(:,t_0)))
+              xlabel('distance Z')
+              ylabel('envelope (m)')
+              title(['envelope surface height [m] @', num2str(t(t_0))])
+
+              %@ Z=x (focus point)
+              subplot(1,2,2)
+              Z_x=  find(abs(Z0-abs(x_f))<outZ, 1, 'first');
+              plot(t,abs(Env2D(Z_x,:)))
+              xlabel('time t (s)')
+              ylabel('envelope (m)')
+                title('RK envelope height a [m] @ Z=x ')
+
+         % 2d plots Analytical SSFT
+              figure
+              imagesc(t,Z0,abs(Env2D_Test))
+              xlabel('time t (s)')
+              ylabel('distance Z (m)')
+              title('Analytical SSFT a  ')
+              colorbar
+
+         % linecuts Analytical SSFT
+              % @  t=0 
+              figure
+              t_0 =  find(abs(t-(x_f/c_g))<dt, 1, 'first')
+              subplot(1,2,1)
+              plot(Z0,abs(Env2D_Test(:,t_0)))
+              xlabel('distance Z')
+              ylabel('envelope (m)')
+              title(['envelope surface height [m] @', num2str(t(t_0))])
+
+              %@ Z=x (focus point)
+              subplot(1,2,2)
+              Z_x=  find(abs(Z0-abs(x_f))<outZ, 1, 'first');
+              plot(t,abs(Env2D_Test(Z_x,:)))
+              xlabel('time t (s)')
+              ylabel('envelope (m)')
+              title('Analytical SSFT a [m] @ Z=x ')
+      
+      % STRONG WIND (Wind Maura
+          % 2D plot envelope
+              figure
+              imagesc(t,Z0,abs(Env2D_WM))
+              xlabel('time t (s)')
+              ylabel('distance Z (m)')
+              title('RK WM  ')
+              colorbar
+      
+          % linecuts   
+              figure
+              t_0 =  find(abs(t-(x_f/c_g))<dt, 1, 'first')
+              subplot(1,2,1)
+              plot(Z0,abs(Env2D_WM(:,t_0)))
+              xlabel('distance Z')
+              ylabel('envelope (m)')
+              title(['envelope surface height [m] @', num2str(t(t_0))])
+
+              %@ Z=x (focus point)
+              subplot(1,2,2)
+              Z_x=  find(abs(Z0-abs(x_f))<outZ, 1, 'first');
+              plot(t,abs(Env2D_WM(Z_x,:)))
+              xlabel('time t (s)')
+              ylabel('envelope (m)')
+              title('Analytical SSFT a [m] @ Z=x ')
+
+%% Non-Akhmediev Breather plots
       if (akhm ~=2)
       figure
       plot(Eta,nombre_RW,'b','linewidth',2)
