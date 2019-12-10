@@ -1,1 +1,1 @@
-Thie is the Ream me# RWM
+This is the Readme file # RWM
